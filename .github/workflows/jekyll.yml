@@ -1,24 +1,50 @@
-name: Deploy Jekyll site to GitHub Pages
+name: Deploy Jekyll to GitHub Pages
 
 on:
   push:
     branches:
-      - main  # 触发部署的分支是 main
+      - main  # 触发分支
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read  # 允许读取代码
-      pages: write    # 允许写入Pages
-      id-token: write # 允许使用ID令牌认证[5](@ref)
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      contents: write    # 允许写入代码
+      pages: write       # 允许配置 Pages
+      id-token: write    # 允许使用 ID 令牌
 
-      - name: Deploy to GitHub Pages
+    steps:
+      # 步骤 1: 检出代码
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # 如果使用子模块需开启
+
+      # 步骤 2: 设置 Ruby 环境
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2  # 根据项目实际版本调整
+          bundler-cache: true  # 缓存 Bundler 依赖
+
+      # 步骤 3: 安装依赖
+      - name: Install Dependencies
+        run: |
+          gem install jekyll bundler
+          bundle install
+
+      # 步骤 4: 构建 Jekyll 网站
+      - name: Build Site
+        run: bundle exec jekyll build --destination _site
+        env:
+          JEKYLL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 解决 GitHub Pages 访问限制
+
+      # 步骤 5: 部署到 GitHub Pages
+      - name: Deploy to Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}  # 直接使用内置的GITHUB_TOKEN
-          publish_dir: ./_site
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # 使用内置令牌
+          publish_dir: ./_site  # 构建产物目录
+          allow_empty_commit: false  # 禁止空提交
+          force_orphan: true  # 防止分支历史冲突
 
